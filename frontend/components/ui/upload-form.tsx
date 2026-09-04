@@ -8,8 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function UploadForm() {
   const [file, setFile] = useState<File | null>(null);
-  const [text, setText] = useState("");
-  const [extractedText, setExtractedText] = useState("");
+  const [pastedText, setPastedText] = useState("");
+  const [activeTab, setActiveTab] = useState("upload");
+  const [analysis, setAnalysis] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -18,31 +19,66 @@ export default function UploadForm() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!file) {
-      alert("Please select a file first.");
-      return;
+  const analyzeText = async (text: string) => {
+    const response = await fetch("http://127.0.0.1:8000/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Analysis failed");
     }
 
+    const data = await response.json();
+    return data.analysis;
+  };
+
+  const handleSubmit = async () => {
     setLoading(true);
-    const formData = new FormData();
-    formData.append("file", file);
+    setAnalysis("");
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/extract-text", {
-        method: "POST",
-        body: formData,
-      });
+      let textToAnalyze = "";
 
-      if (!response.ok) {
-        throw new Error("Failed to extract text");
+      if (activeTab === "upload") {
+        if (!file) {
+          alert("Please select a file first.");
+          setLoading(false);
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const extractResponse = await fetch(
+          "http://127.0.0.1:8000/extract-text",
+          {
+            method: "POST",
+            body: formData,
+          },
+        );
+
+        if (!extractResponse.ok) {
+          throw new Error("Text extraction failed");
+        }
+
+        const extractData = await extractResponse.json();
+        textToAnalyze = extractData.extracted_text;
+      } else {
+        if (!pastedText.trim()) {
+          alert("Please paste some text first.");
+          setLoading(false);
+          return;
+        }
+        textToAnalyze = pastedText;
       }
 
-      const data = await response.json();
-      setExtractedText(data.extracted_text);
+      const result = await analyzeText(textToAnalyze);
+      setAnalysis(result);
     } catch (error) {
       console.error(error);
-      alert("Something went wrong while extracting text.");
+      alert("Something went wrong. Check the console for details.");
     } finally {
       setLoading(false);
     }
@@ -50,7 +86,10 @@ export default function UploadForm() {
 
   return (
     <Card className="p-6 w-full max-w-lg">
-      <Tabs defaultValue="upload">
+      <Tabs
+        defaultValue="upload"
+        onValueChange={(value) => setActiveTab(value)}
+      >
         <TabsList className="mb-4">
           <TabsTrigger value="upload">Upload File</TabsTrigger>
           <TabsTrigger value="paste">Paste Text</TabsTrigger>
@@ -71,8 +110,8 @@ export default function UploadForm() {
         <TabsContent value="paste">
           <Textarea
             placeholder="Paste your resume or content here..."
-            value={text}
-            onChange={(e) => setText(e.target.value)}
+            value={pastedText}
+            onChange={(e) => setPastedText(e.target.value)}
             rows={8}
           />
         </TabsContent>
@@ -82,9 +121,9 @@ export default function UploadForm() {
         {loading ? "Analyzing..." : "Analyze"}
       </Button>
 
-      {extractedText && (
-        <div className="mt-4 p-3 bg-gray-100 rounded text-sm whitespace-pre-wrap max-h-60 overflow-y-auto">
-          {extractedText}
+      {analysis && (
+        <div className="mt-4 p-4 bg-gray-100 rounded text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">
+          {analysis}
         </div>
       )}
     </Card>
