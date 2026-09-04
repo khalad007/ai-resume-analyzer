@@ -17,7 +17,7 @@ const [initialLoading, setInitialLoading] = useState(true);
 useEffect(() => {
   const fetchHistory = async () => {
     try {
-      const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/history");
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history`);
       if (!response.ok) throw new Error("Failed to fetch history");
       const data = await response.json();
       setHistory(data);

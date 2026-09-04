@@ -21,7 +21,7 @@ export default function UploadForm({ onAnalysisComplete }: { onAnalysisComplete:
   };
 
   const analyzeText = async (text: string) => {
-    const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/analyze", {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
@@ -55,7 +55,7 @@ export default function UploadForm({ onAnalysisComplete }: { onAnalysisComplete:
         formData.append("file", file);
 
         const extractResponse = await fetch(
-          "${process.env.NEXT_PUBLIC_API_URL}/extract-text",
+          `${process.env.NEXT_PUBLIC_API_URL}/extract-text`,
           {
             method: "POST",
             body: formData,
