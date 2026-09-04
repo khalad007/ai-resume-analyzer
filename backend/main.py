@@ -1,9 +1,18 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 import pdfplumber
 import docx
 import io
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 @app.get("/")
 def health_check():
     return {"Status": "ok"}
