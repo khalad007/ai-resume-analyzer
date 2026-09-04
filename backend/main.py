@@ -8,6 +8,10 @@ import docx
 import io
 import os
 
+from sqlalchemy.orm import Session
+from fastapi import Depends
+from database import SessionLocal, Analysis
+
 load_dotenv()
 
 app = FastAPI()
@@ -22,6 +26,12 @@ app.add_middleware(
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 class TextInput(BaseModel):
     text: str
@@ -56,7 +66,7 @@ async def extract_text(file: UploadFile = File(...)):
 
 
 @app.post("/analyze")
-async def analyze_text(input: TextInput):
+async def analyze_text(input: TextInput, db: Session = Depends(get_db)):
     prompt = f"""
 You are a professional resume reviewer. Analyze the following resume text and provide:
 1. Three key strengths
@@ -72,4 +82,23 @@ Resume text:
         contents=prompt,
     )
 
-    return {"analysis": response.text}
+    saved = Analysis(input_text=input.text, result_text=response.text)
+    db.add(saved)
+    db.commit()
+    db.refresh(saved)
+
+    return {"analysis": response.text, "id": saved.id}
+
+
+@app.get("/history")
+def get_history(db: Session = Depends(get_db)):
+    records = db.query(Analysis).order_by(Analysis.created_at.desc()).all()
+    return [
+        {
+            "id": r.id,
+            "input_text": r.input_text,
+            "result_text": r.result_text,
+            "created_at": r.created_at,
+        }
+        for r in records
+    ]
