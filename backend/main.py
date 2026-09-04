@@ -67,6 +67,9 @@ async def extract_text(file: UploadFile = File(...)):
 
 @app.post("/analyze")
 async def analyze_text(input: TextInput, db: Session = Depends(get_db)):
+    if not input.text.strip():
+        raise HTTPException(status_code=400, detail="No text provided to analyze.")
+
     prompt = f"""
 You are a professional resume reviewer. Analyze the following resume text and provide:
 1. Three key strengths
@@ -77,10 +80,13 @@ Resume text:
 {input.text}
 """
 
-    response = client.models.generate_content(
-        model="gemini-3.6-flash",
-        contents=prompt,
-    )
+    try:
+        response = client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=prompt,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"AI service error: {str(e)}")
 
     saved = Analysis(input_text=input.text, result_text=response.text)
     db.add(saved)

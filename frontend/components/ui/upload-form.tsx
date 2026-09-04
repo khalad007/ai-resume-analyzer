@@ -6,12 +6,13 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export default function UploadForm() {
+export default function UploadForm({ onAnalysisComplete }: { onAnalysisComplete: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [pastedText, setPastedText] = useState("");
   const [activeTab, setActiveTab] = useState("upload");
   const [analysis, setAnalysis] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -37,6 +38,8 @@ export default function UploadForm() {
   const handleSubmit = async () => {
     setLoading(true);
     setAnalysis("");
+    onAnalysisComplete();
+    setErrorMsg("");
 
     try {
       let textToAnalyze = "";
@@ -78,7 +81,7 @@ export default function UploadForm() {
       setAnalysis(result);
     } catch (error) {
       console.error(error);
-      alert("Something went wrong. Check the console for details.");
+      setErrorMsg("Something went wrong. Check the console for details.");
     } finally {
       setLoading(false);
     }
@@ -120,6 +123,8 @@ export default function UploadForm() {
       <Button onClick={handleSubmit} className="mt-4 w-full" disabled={loading}>
         {loading ? "Analyzing..." : "Analyze"}
       </Button>
+
+      {errorMsg && <p className="mt-4 text-sm text-red-600">{errorMsg}</p>}
 
       {analysis && (
         <div className="mt-4 p-4 bg-gray-100 rounded text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">
