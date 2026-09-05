@@ -1,15 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export default function UploadForm({ onAnalysisComplete }: { onAnalysisComplete: () => void }) {
+export default function UploadForm({
+  onAnalysisComplete,
+}: {
+  onAnalysisComplete: () => void;
+}) {
+  const [activeTab, setActiveTab] = useState<"upload" | "paste">("upload");
   const [file, setFile] = useState<File | null>(null);
   const [pastedText, setPastedText] = useState("");
-  const [activeTab, setActiveTab] = useState("upload");
   const [analysis, setAnalysis] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -26,11 +29,7 @@ export default function UploadForm({ onAnalysisComplete }: { onAnalysisComplete:
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
     });
-
-    if (!response.ok) {
-      throw new Error("Analysis failed");
-    }
-
+    if (!response.ok) throw new Error("Analysis failed");
     const data = await response.json();
     return data.analysis;
   };
@@ -38,7 +37,6 @@ export default function UploadForm({ onAnalysisComplete }: { onAnalysisComplete:
   const handleSubmit = async () => {
     setLoading(true);
     setAnalysis("");
-    onAnalysisComplete();
     setErrorMsg("");
 
     try {
@@ -46,14 +44,12 @@ export default function UploadForm({ onAnalysisComplete }: { onAnalysisComplete:
 
       if (activeTab === "upload") {
         if (!file) {
-          alert("Please select a file first.");
+          setErrorMsg("Choose a file before analyzing.");
           setLoading(false);
           return;
         }
-
         const formData = new FormData();
         formData.append("file", file);
-
         const extractResponse = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/extract-text`,
           {
@@ -61,16 +57,12 @@ export default function UploadForm({ onAnalysisComplete }: { onAnalysisComplete:
             body: formData,
           },
         );
-
-        if (!extractResponse.ok) {
-          throw new Error("Text extraction failed");
-        }
-
+        if (!extractResponse.ok) throw new Error("Text extraction failed");
         const extractData = await extractResponse.json();
         textToAnalyze = extractData.extracted_text;
       } else {
         if (!pastedText.trim()) {
-          alert("Please paste some text first.");
+          setErrorMsg("Paste some text before analyzing.");
           setLoading(false);
           return;
         }
@@ -79,58 +71,89 @@ export default function UploadForm({ onAnalysisComplete }: { onAnalysisComplete:
 
       const result = await analyzeText(textToAnalyze);
       setAnalysis(result);
+      onAnalysisComplete();
     } catch (error) {
       console.error(error);
-      setErrorMsg("Something went wrong. Check the console for details.");
+      setErrorMsg("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Card className="p-6 w-full max-w-lg">
-      <Tabs
-        defaultValue="upload"
-        onValueChange={(value) => setActiveTab(value)}
-      >
-        <TabsList className="mb-4">
-          <TabsTrigger value="upload">Upload File</TabsTrigger>
-          <TabsTrigger value="paste">Paste Text</TabsTrigger>
-        </TabsList>
+    <div className="w-full">
+      <h1 className="font-serif text-3xl text-ink mb-1">AI Resume Analyzer</h1>
+      <p className="text-warmgray text-sm mb-8">
+        Upload a resume or paste text to get an honest, structured review.
+      </p>
 
-        <TabsContent value="upload">
+      {/* Tabs */}
+      <div className="flex gap-6 border-b border-warmgray/30 mb-6">
+        <button
+          onClick={() => setActiveTab("upload")}
+          className={`pb-3 text-sm transition-colors ${
+            activeTab === "upload"
+              ? "text-ink border-b-2 border-ink font-medium"
+              : "text-warmgray hover:text-ink"
+          }`}
+        >
+          Upload file
+        </button>
+        <button
+          onClick={() => setActiveTab("paste")}
+          className={`pb-3 text-sm transition-colors ${
+            activeTab === "paste"
+              ? "text-ink border-b-2 border-ink font-medium"
+              : "text-warmgray hover:text-ink"
+          }`}
+        >
+          Paste text
+        </button>
+      </div>
+
+      {/* Input area */}
+      {activeTab === "upload" ? (
+        <label className="flex flex-col items-center justify-center gap-2 border border-dashed border-warmgray/40 rounded-md py-10 px-4 cursor-pointer hover:border-ink/40 transition-colors bg-white">
           <input
             type="file"
             accept=".pdf,.docx"
             onChange={handleFileChange}
-            className="mb-4 block"
+            className="hidden"
           />
-          {file && (
-            <p className="text-sm text-gray-500">Selected: {file.name}</p>
+          <span className="text-sm text-ink">
+            {file ? file.name : "Click to choose a PDF or DOCX file"}
+          </span>
+          {!file && (
+            <span className="text-xs text-warmgray">or drag and drop</span>
           )}
-        </TabsContent>
+        </label>
+      ) : (
+        <Textarea
+          placeholder="Paste your resume or content here…"
+          value={pastedText}
+          onChange={(e) => setPastedText(e.target.value)}
+          rows={10}
+          className="bg-white border-warmgray/30 focus-visible:ring-ink/20"
+        />
+      )}
 
-        <TabsContent value="paste">
-          <Textarea
-            placeholder="Paste your resume or content here..."
-            value={pastedText}
-            onChange={(e) => setPastedText(e.target.value)}
-            rows={8}
-          />
-        </TabsContent>
-      </Tabs>
-
-      <Button onClick={handleSubmit} className="mt-4 w-full" disabled={loading}>
-        {loading ? "Analyzing..." : "Analyze"}
+      <Button
+        onClick={handleSubmit}
+        disabled={loading}
+        className="mt-5 bg-ink hover:bg-ink/90 text-paper"
+      >
+        {loading ? "Analyzing…" : "Analyze"}
       </Button>
 
-      {errorMsg && <p className="mt-4 text-sm text-red-600">{errorMsg}</p>}
+      {errorMsg && <p className="mt-3 text-sm text-clay">{errorMsg}</p>}
 
       {analysis && (
-        <div className="mt-4 p-4 bg-gray-100 rounded text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">
-          {analysis}
+        <div className="mt-8 pt-8 border-t border-warmgray/20">
+          <article className="prose prose-sm max-w-none font-serif text-ink prose-headings:font-serif prose-headings:text-ink prose-strong:text-ink">
+            <ReactMarkdown>{analysis}</ReactMarkdown>
+          </article>
         </div>
       )}
-    </Card>
+    </div>
   );
 }

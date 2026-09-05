@@ -1,8 +1,20 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-ink: #1C2430;
+  --color-paper: #FAF8F4;
+  --color-teal: #2F6F5E;
+  --color-clay: #B5482A;
+  --color-warmgray: #8A8578;
+
+  --font-serif: var(--font-serif), serif;
+  --font-sans: var(--font-sans), sans-serif;
+}
 
 @theme inline {
   --color-background: var(--background);
